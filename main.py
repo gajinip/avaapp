@@ -15,7 +15,7 @@ v = vision()
 ava = AVA()
 last_action_time = 0
 
-SCREEN_W, SCREEN_H = 1920, 1080 # Force 1080p resolution
+SCREEN_W, SCREEN_H = pyautogui.size()
 prev_x, prev_y = 0, 0
 smooth_factor = 5
 
@@ -42,6 +42,7 @@ def run_gesture():
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret: continue
+        h, w, _ = frame.shape
 
         frame = cv2.flip(frame, 1)
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -59,14 +60,20 @@ def run_gesture():
 
             if ava.mouse_mode:
                 if f == [0, 1, 0, 0, 0]: # Index finger up
-                    # 1. Reachability Margin (The "Box")
-                    # Using 100-120 allows easy reach to corners
-                    margin = 116
+                    
+                    margin = 118
                     
                     # 2. Map coordinates (Assuming standard 640x480 webcam)
                     # We map [110 to 530] in camera -> [0 to 1920] on screen
-                    target_x = np.interp(hand_landmarks.landmark[8].x * 640, [margin, 640 - margin], [0, SCREEN_W])
-                    target_y = np.interp(hand_landmarks.landmark[8].y * 480, [margin, 480 - margin], [0, SCREEN_H])
+                                        
+                    
+                    
+                    target_x = np.interp(hand_landmarks.landmark[8].x * w, [margin, w - margin], [0, SCREEN_W])
+                    target_y = np.interp(hand_landmarks.landmark[8].y * h, [margin, h - margin], [0, SCREEN_H])
+
+
+                    target_x = np.clip(target_x, 0, SCREEN_W)
+                    target_y = np.clip(target_y, 0, SCREEN_H)
                     
                     # 3. Apply Smoothing (Removes jitter)
                     global prev_x, prev_y
@@ -82,15 +89,19 @@ def run_gesture():
                     time.sleep(0.3)
 
             # --- 1. VOLUME CONTROL (Index, Middle, Ring UP) ---
-            if f == [0, 0, 1, 1, 1]: # Strict check (Thumb/Pinky must be down)
-                vol_level = np.interp(hand_landmarks.landmark[8].y, [0.3, 0.7], [max_vol, min_vol])
+            # --- 1. VOLUME CONTROL ---
+            if f == [0, 0, 1, 1, 1]:
+    # Clamp the input to the interpolation range (0.3 to 0.7)
+                hand_y = np.clip(hand_landmarks.landmark[8].y, 0.3, 0.7)
+                vol_level = np.interp(hand_y, [0.3, 0.7], [max_vol, min_vol])
                 volume.SetMasterVolumeLevel(vol_level, None)
-                # Visuals
-                perc = int(np.interp(vol_level, [min_vol, max_vol], [0, 100]))
-                vol_bar = np.interp(vol_level, [min_vol, max_vol], [400, 150])
+    # Ensure vol_level is within hardware bounds
+                # Change this line in main.py:
+                vol_per = np.interp(vol_level, [min_vol, max_vol], [0, 100])
+                vol_bar = np.interp(vol_level, [min_vol, max_vol], [400, 150]) # Calculate percentage
+                cv2.putText(frame, f"VOL: {int(vol_per)}%", (40, 450), 1, 2, (255, 0, 0), 2)
                 cv2.rectangle(frame, (50, 150), (85, 400), (255, 0, 0), 3)
                 cv2.rectangle(frame, (50, int(vol_bar)), (85, 400), (255, 0, 0), cv2.FILLED)
-                cv2.putText(frame, f"VOL: {perc}%", (40, 450), 1, 2, (255, 0, 0), 2)
  
             # --- 2. BRIGHTNESS CONTROL (Index + Pinky UP) ---
             elif f == [1, 1, 0, 0, 1]:
