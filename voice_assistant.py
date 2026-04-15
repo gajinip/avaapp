@@ -197,7 +197,7 @@ class AVA:
                 self.mouse_mode = True
                 self.speak("Mouse control activated")
 
-            elif "off mouse mode" in text:
+            elif "of mouse mode" in text:
                 self.mouse_mode = False
                 self.speak("Mouse control deactivated")
 
@@ -229,3 +229,16 @@ class AVA:
             elif "stop" in text or "sleep" in text:
                 self.speak("Going to sleep. Goodbye!")
                 self.running = False
+
+            elif "ppt mode" in text:
+                self.speak("Starting PowerPoint")
+                if "next slide" in text:
+                    pyautogui.press("right")
+                elif "previous slide" in text:
+                    pyautogui.press("left")
+                elif "start presentation" in text:
+                    pyautogui.press("f5")
+                elif "end presentation" in text:
+                    pyautogui.press("esc")
+                
+            
